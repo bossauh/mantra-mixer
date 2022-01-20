@@ -50,18 +50,25 @@ class Track:
 
         # Audio related attributes
         self.vol = kwargs.get("vol", 1)
+        self.__previous_vol = self.vol
 
         # Wait for the track to start
         while self.shape is None:
             time.sleep(0.01)
         
-    def pause(self) -> None:
+    def pause(self, smooth: bool = True) -> None:
         """Pause the track"""
-        self.paused = True 
+
+        if smooth:
+            self.set_volume(0)
+        self.paused = True
     
-    def resume(self) -> None:
+    def resume(self, smooth: bool = True) -> None:
         """Resume the current track"""
         self.paused = False
+
+        if smooth:
+            self.set_volume(self.__previous_vol)
         
     def set_volume(self, vol: float, smoothness: float = 0.005) -> None:
         """
@@ -76,6 +83,7 @@ class Track:
             The higher this value is, the smoother the change will be. Defaults to 0.005 which is pretty smooth.
         """
 
+        self.__previous_vol = self.vol
         inc = 0.01
         while abs(self.vol - vol) > 0.01:
             if vol > self.vol:
