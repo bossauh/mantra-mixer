@@ -180,15 +180,33 @@ class Mixer:
 
     Parameters
     ----------
-    `tracks` : List[Track]
-        Your list of tracks.
+    `tracks` : Union[List[Track], int]
+        Your list of tracks or a `int` number of tracks to generate on init. If a integer is provided, that amount of tracks will be generated and the name of each track is going to be `str(id)`
     `conversion_path` : str
         Sometimes loading a file will fail due to it being an invalid format. To get around this, we convert it onto a .wav file, this is where those converted files are stored. Defaults to None which is to just allow loading of unsupported formats to fail.
+    `tracks_params` : dict
+        You'll use this if you provided an int to the tracks parameter. This is a dictionary that takes in parameters each Track object needs.
+
+        Ex:
+        if you want all generatred tracks to have parameters like these:
+            Track(vol=0.5, callback=some_func)
+        
+        You would set this parameter to:
+            tracks_params={"vol": 0.5, "callback": some_func}
     """
 
-    def __init__(self, tracks: List[Track], conversion_path: str = None) -> None:
+    def __init__(self, tracks: Union[List[Track], int], conversion_path: str = None, **kwargs) -> None:
         self.tracks = tracks
         self.conversion_path = conversion_path
+
+        if isinstance(self.tracks, int):
+            self.tracks = self.generate_tracks(self.tracks, kwargs.get("tracks_params"))
+    
+    def generate_tracks(self, count: int, params: dict = None) -> None:
+        if params is None:
+            params = {}
+
+        return [Track(str(i), **params) for i in range(count)]
 
     def get_track(self, name: str = None, id_: int = None, require_unoccupied: bool = False) -> Union[None, Track]:
         """
