@@ -46,6 +46,7 @@ class Track:
 
         self.stopped = False
         self._stop_signal = False
+        self.paused = False
 
         # Audio related attributes
         self.vol = kwargs.get("vol", 1)
@@ -53,6 +54,14 @@ class Track:
         # Wait for the track to start
         while self.shape is None:
             time.sleep(0.01)
+        
+    def pause(self) -> None:
+        """Pause the track"""
+        self.paused = True 
+    
+    def resume(self) -> None:
+        """Resume the current track"""
+        self.paused = False
         
     def set_volume(self, vol: float, smoothness: float = 0.005) -> None:
         """
@@ -125,15 +134,18 @@ class Track:
 
         self.shape = outdata.shape
 
-        try:
-            data = self.queue.get(block=False)
-            self.occupied = True
-        except Empty:
-            self.occupied = False
-            data = None
+        if not self.paused:
+            try:
+                data = self.queue.get(block=False)
+                self.occupied = True
+            except Empty:
+                self.occupied = False
+                data = None
 
-        if self.occupied:
-            outdata[:] = self._apply_fx(data)
+            if self.occupied:
+                outdata[:] = self._apply_fx(data)
+        else:
+            outdata[:] = 0
 
     def __start(self) -> None:
         with sd.OutputStream(samplerate=self.samplerate, channels=2, callback=self.__callback):
