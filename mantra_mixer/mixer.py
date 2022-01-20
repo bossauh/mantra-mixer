@@ -30,6 +30,8 @@ class Track:
     ----------
     `name` : str
         The name of this track.
+    `callback` : Callable
+        A user supplied function that takes in one argument, the provided value in the parameter is the ndarray's being played. If the track is paused, or there's nothing to play, the callback function is not being called (because there's no ndarray to supply it with). This callback then should return the same or modified ndarray (the returned ndarray is what ends up being played)
     `vol` : int
         The initial volume of the track. Defaults to 1 which is 100%. You can go higher than 1 but it starts to sound shit.
     """
@@ -40,6 +42,7 @@ class Track:
         self.occupied = False
         self.shape = None
         self.samplerate = RATE
+        self.callback = kwargs.get("callback")
 
         self.queue = Queue()
         self.start()
@@ -151,7 +154,11 @@ class Track:
                 data = None
 
             if self.occupied:
-                outdata[:] = self._apply_fx(data)
+                if self.callback is not None:
+                    data = self.callback(data)
+                
+                if data is not None:
+                    outdata[:] = self._apply_fx(data)
         else:
             outdata[:] = 0
 
