@@ -19,7 +19,7 @@ RATE = 48000
 class Track:
     """
     Initialize a Track.
-    A track is what's responsible for opening a constant sd.Stream in the background.
+    A track is what's responsible for opening a constant sd.OutputStream in the background.
     We can then play audio by putting ndarray data into this track's Queue.
 
     Notes
@@ -84,13 +84,13 @@ class Track:
             time.sleep(0.01)
 
     def stop(self) -> None:
-        """Stop this track's Stream"""
+        """Stop this track's OutputStream"""
         self._stop_signal = True
         while not self.stopped:
             time.sleep(0.01)
 
     def start(self) -> None:
-        """Start this track's Stream"""
+        """Start this track's OutputStream"""
         threading.Thread(target=self.__start, daemon=True).start()
 
     def _apply_fx(self, data) -> np.ndarray:
@@ -99,7 +99,7 @@ class Track:
             2, (math.sqrt(math.sqrt(math.sqrt(self.vol))) * 192 - 192) / 6), casting="unsafe")
         return data
 
-    def __callback(self, indata, outdata, frames, time, status) -> None:
+    def __callback(self, outdata, frames, time, status) -> None:
 
         self.shape = outdata.shape
 
@@ -114,7 +114,7 @@ class Track:
             outdata[:] = self._apply_fx(data)
 
     def __start(self) -> None:
-        with sd.Stream(samplerate=self.samplerate, channels=2, callback=self.__callback):
+        with sd.OutputStream(samplerate=self.samplerate, channels=2, callback=self.__callback):
             while not self._stop_signal:
                 try:
                     time.sleep(0.001)
