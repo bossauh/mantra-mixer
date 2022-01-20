@@ -53,6 +53,28 @@ class Track:
         # Wait for the track to start
         while self.shape is None:
             time.sleep(0.01)
+        
+    def set_volume(self, vol: float, smoothness: float = 0.005) -> None:
+        """
+        Change the volume of the track.
+        You can also just use track.vol = x but if you want a smoother volume change you can use this.
+
+        Parameters
+        ----------
+        `vol` : float
+            New volume.
+        `smoothness` : float
+            The higher this value is, the smoother the change will be. Defaults to 0.005 which is pretty smooth.
+        """
+
+        inc = 0.01
+        while abs(self.vol - vol) > 0.01:
+            if vol > self.vol:
+                self.vol += inc
+            elif vol < self.vol:
+                self.vol -= inc
+            
+            time.sleep(smoothness)
 
     def update_samplerate(self, rate: int) -> None:
         """
