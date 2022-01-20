@@ -190,7 +190,7 @@ class Mixer:
         """Get a list of unoccupied tracks. Could be an empty list of no unoccupied tracks were found."""
         return [x for x in self.tracks if not x.occupied]
 
-    def play_file(self, fp: str, **kwargs) -> None:
+    def play_file(self, fp: str, **kwargs) -> Track:
         """
         Play the provided file. The file will be split into chunks and is then put in the track's audio queue.
 
@@ -212,6 +212,11 @@ class Mixer:
             Raised when there's no unoccupied track. Will not be raised if `track` is provided.
         `UnsupportedFormat` :
             Raised when the provided file format is not supported or when is it converted onto a .wav but it still fails.
+
+        Returns
+        -------
+        `Track` :
+            The track the file is being played at.
         """
 
         # First get a available track
@@ -258,3 +263,5 @@ class Mixer:
 
         for nd in nds:
             track.queue.put(nd)
+        
+        return track
