@@ -314,14 +314,16 @@ class Mixer:
             The track the file is being played at.
         """
 
-        # First get a available track
         track = kwargs.get("track")
+        if isinstance(track, str):
+            track = self.get_track(name=track)
+
         if track is None:
             track = self.get_unoccupied_tracks()
             if not track:
                 raise NoUnoccupiedTrack
             track = track[0]
-
+        
         try:
             _, rate = sf.read(fp, frames=1)
         except RuntimeError as e:
