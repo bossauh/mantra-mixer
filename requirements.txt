@@ -3,4 +3,4 @@ sounddevice
 librosa==0.8.1
 soundfile==0.10.3.post1
 sounddevice==0.4.4
-ffmpy==0.30.0
+ffmpy==0.3.0
