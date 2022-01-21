@@ -164,7 +164,7 @@ class Track:
 
             if self.occupied:
                 if self.callback is not None:
-                    data = self.callback(data)
+                    data = self.callback(self, data)
                 
                 if data is not None:
                     outdata[:] = self._apply_fx(data)
