@@ -8,6 +8,7 @@ from typing import List, Union
 
 import ffmpy
 import numpy as np
+import asyncio
 import sounddevice as sd
 import soundfile as sf
 
@@ -64,21 +65,21 @@ class Track:
         while self.shape is None:
             time.sleep(0.01)
         
-    def pause(self, smooth: bool = True) -> None:
+    async def pause(self, smooth: bool = True) -> None:
         """Pause the track"""
 
         if smooth:
-            self.set_volume(0)
+            await self.set_volume(0)
         self.paused = True
     
-    def resume(self, smooth: bool = True) -> None:
+    async def resume(self, smooth: bool = True) -> None:
         """Resume the current track"""
         self.paused = False
 
         if smooth:
-            self.set_volume(self.__previous_vol)
+            await self.set_volume(self.__previous_vol)
         
-    def set_volume(self, vol: float, smoothness: float = 0.005) -> None:
+    async def set_volume(self, vol: float, smoothness: float = 0.005) -> None:
         """
         Change the volume of the track.
         You can also just use track.vol = x but if you want a smoother volume change you can use this.
@@ -99,9 +100,9 @@ class Track:
             elif vol < self.vol:
                 self.vol -= inc
             
-            time.sleep(smoothness)
+            await asyncio.sleep(smoothness)
 
-    def update_samplerate(self, rate: int) -> None:
+    async def update_samplerate(self, rate: int) -> None:
         """
         Update the samplerate of this track.
         It does this by stopping the stream and changing the samplerate attribute and starting the stream again.
@@ -115,7 +116,7 @@ class Track:
         if rate == self.samplerate:
             return
 
-        self.stop()
+        await self.stop()
         self.samplerate = rate
         self.shape = None
         self.stopped = False
@@ -128,13 +129,16 @@ class Track:
         self.start()
 
         while self.shape is None:
-            time.sleep(0.01)
+            await asyncio.sleep(0.01)
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         """Stop this track's OutputStream"""
         self._stop_signal = True
         while not self.stopped:
-            time.sleep(0.01)
+            await asyncio.sleep(0.01)
+        
+        with self.queue.mutex:
+            self.queue.queue.clear()
 
     def start(self) -> None:
         """Start this track's OutputStream"""
@@ -203,6 +207,7 @@ class Mixer:
     def __init__(self, tracks: Union[List[Track], int], conversion_path: str = None, **kwargs) -> None:
         self.tracks = tracks
         self.conversion_path = conversion_path
+        self.loop = asyncio.get_event_loop()
 
         if isinstance(self.tracks, int):
             self.tracks = self.generate_tracks(self.tracks, kwargs.get("tracks_params"))
@@ -262,7 +267,7 @@ class Mixer:
         """Get a list of unoccupied tracks. Could be an empty list of no unoccupied tracks were found."""
         return [x for x in self.tracks if not x.occupied]
 
-    def play_file(self, fp: str, **kwargs) -> Track:
+    async def play_file(self, fp: str, **kwargs) -> Track:
         """
         Play the provided file. The file will be split into chunks and is then put in the track's audio queue.
 
@@ -277,6 +282,8 @@ class Mixer:
             Path to the file.
         `track` : Track
             The track to use. If not provided, a unoccupied track will be used.
+        `blocking` : bool
+            Whether to use a thread when putting the items in the queue or not. Defaults to False.
 
         Raises
         ------
@@ -318,11 +325,11 @@ class Mixer:
 
             try:
                 ff.run()
-                return self.play_file(out, **kwargs)
+                return await self.play_file(out, **kwargs)
             except ffmpy.FFRuntimeError as e:
                 raise UnsupportedFormat(e)
 
-        track.update_samplerate(rate)
+        await track.update_samplerate(rate)
         blocksize = track.shape[0]
 
         nds = sf.blocks(
@@ -333,7 +340,14 @@ class Mixer:
             dtype=np.float32
         )
 
-        for nd in nds:
-            track.queue.put(nd)
-        
+        def t():
+            for nd in nds:
+                track.queue.put(nd)
+
+        if not kwargs.get("blocking", False):
+            threading.Thread(target=t, daemon=True).start()
+            await asyncio.sleep(0.1)
+        else:
+            t()
+
         return track
