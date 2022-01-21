@@ -42,6 +42,10 @@ if __name__ == "__main__":
         await mixer.play_file("./blocking.mp3", blocking=True)
         print("This line won't be reached until blocking.mp3 is finished playing")
 
+        # If you want the files to be loaded in memory you can do so by passing load_in_memory=True
+        # You usually won't do this to avoid large memory usages, but sometimes you may want this because let's say after calling play_file, you wat to delete the file immediately or replace it.
+        await mixer.play_file("./loaded_in_memory.mp3", load_in_memory=True)
+
     asyncio.run(main())
 ```
 
