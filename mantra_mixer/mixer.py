@@ -266,6 +266,11 @@ class Mixer:
     def get_unoccupied_tracks(self) -> List[Track]:
         """Get a list of unoccupied tracks. Could be an empty list of no unoccupied tracks were found."""
         return [x for x in self.tracks if not x.occupied]
+    
+    async def stop_all(self):
+        """Stops all tracks"""
+        for track in self.tracks:
+            await track.stop()
 
     async def play_file(self, fp: str, **kwargs) -> Track:
         """
