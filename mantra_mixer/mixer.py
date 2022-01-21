@@ -64,21 +64,21 @@ class Track:
         # Wait for the track to start
         while self.shape is None:
             time.sleep(0.01)
-        
+
     async def pause(self, smooth: bool = True) -> None:
         """Pause the track"""
 
         if smooth:
             await self.set_volume(0)
         self.paused = True
-    
+
     async def resume(self, smooth: bool = True) -> None:
         """Resume the current track"""
         self.paused = False
 
         if smooth:
             await self.set_volume(self.__previous_vol)
-        
+
     async def set_volume(self, vol: float, smoothness: float = 0.005) -> None:
         """
         Change the volume of the track.
@@ -99,7 +99,7 @@ class Track:
                 self.vol += inc
             elif vol < self.vol:
                 self.vol -= inc
-            
+
             await asyncio.sleep(smoothness)
 
     async def update_samplerate(self, rate: int) -> None:
@@ -136,7 +136,7 @@ class Track:
         self._stop_signal = True
         while not self.stopped:
             await asyncio.sleep(0.01)
-        
+
         with self.queue.mutex:
             self.queue.queue.clear()
 
@@ -165,7 +165,7 @@ class Track:
             if self.occupied:
                 if self.callback is not None:
                     data = self.callback(self, data)
-                
+
                 if data is not None:
                     outdata[:] = self._apply_fx(data)
         else:
@@ -199,7 +199,7 @@ class Mixer:
         Ex:
         if you want all generatred tracks to have parameters like these:
             Track(vol=0.5, callback=some_func)
-        
+
         You would set this parameter to:
             tracks_params={"vol": 0.5, "callback": some_func}
     """
@@ -211,8 +211,9 @@ class Mixer:
         self.playing_files = {}
 
         if isinstance(self.tracks, int):
-            self.tracks = self.generate_tracks(self.tracks, kwargs.get("tracks_params"))
-    
+            self.tracks = self.generate_tracks(
+                self.tracks, kwargs.get("tracks_params"))
+
     def generate_tracks(self, count: int, params: dict = None) -> None:
         if params is None:
             params = {}
@@ -267,14 +268,14 @@ class Mixer:
     def get_unoccupied_tracks(self) -> List[Track]:
         """Get a list of unoccupied tracks. Could be an empty list of no unoccupied tracks were found."""
         return [x for x in self.tracks if not x.occupied]
-    
+
     def stop_file(self, track: str) -> None:
         playing_data = self.playing_files.get(track)
 
         if playing_data:
             if playing_data["playing"]:
                 self.playing_files[track]["stop"] = True
-    
+
     async def stop_all(self) -> None:
         """Stops all tracks"""
         for track in self.tracks:
@@ -297,6 +298,8 @@ class Mixer:
             The track to use. If not provided, a unoccupied track will be used.
         `blocking` : bool
             Whether to use a thread when putting the items in the queue or not. Defaults to False.
+        `load_in_memory` : bool 
+            Load the entire audio file in memory. Defaults to False.
 
         Raises
         ------
@@ -341,7 +344,7 @@ class Mixer:
                 return await self.play_file(out, **kwargs)
             except ffmpy.FFRuntimeError as e:
                 raise UnsupportedFormat(e)
-        
+
         # Check if the current track is being fed audio data and stop if it is
         self.stop_file(track.name)
         while True:
@@ -363,19 +366,33 @@ class Mixer:
             dtype=np.float32
         )
 
+        load_in_memory = kwargs.get("load_in_memory", False)
+
         def t():
+
             self.playing_files[track.name] = {
                 "playing": True,
                 "stop": False
             }
 
-            for nd in nds:
+            def check_signal() -> None:
                 sig = self.playing_files.get(track.name)
                 if sig:
                     if sig["stop"]:
-                        break
+                        return True
+                return False
+
+            if load_in_memory:
+                chunks = [nd for nd in nds]
+            else:
+                chunks = nds
+
+            for nd in chunks:
+                sig = check_signal()
+                if sig:
+                    break
                 track.queue.put(nd)
-            
+
             self.playing_files[track.name] = {
                 "playing": False,
                 "stop": False
