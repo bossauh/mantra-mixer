@@ -383,7 +383,7 @@ class Mixer:
 
         if not kwargs.get("blocking", False):
             threading.Thread(target=t, daemon=True).start()
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.2)
         else:
             t()
 
