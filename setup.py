@@ -16,8 +16,8 @@ setup(
     description="Audio mixing library simplified.",
     author="Philippe Mathew",
     author_email="philmattdev@gmail.com",
-    url="",
-    download_url="",
+    url="https://github.com/bossauh/mantra-mixer",
+    download_url="https://github.com/bossauh/mantra-mixer/archive/refs/tags/v_01.tar.gz",
     keywords=["audio", "mixing", "mixer"],
     install_requires=install_requires,
     classifiers=[
