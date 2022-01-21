@@ -32,6 +32,11 @@ class Track:
         The name of this track.
     `callback` : Callable
         A user supplied function that takes in one argument, the provided value in the parameter is the ndarray's being played. If the track is paused, or there's nothing to play, the callback function is not being called (because there's no ndarray to supply it with). This callback then should return the same or modified ndarray (the returned ndarray is what ends up being played)
+    `queue_size` : int
+        The maximum number of frames to put in the queue. Defaults to 20. You normally don't have to touch this.
+
+    Audio Parameters
+    ----------------
     `vol` : int
         The initial volume of the track. Defaults to 1 which is 100%. You can go higher than 1 but it starts to sound shit.
     """
@@ -44,7 +49,7 @@ class Track:
         self.samplerate = RATE
         self.callback = kwargs.get("callback")
 
-        self.queue = Queue()
+        self.queue = Queue(kwargs.get("queue_size", 20))
         self.start()
 
         self.stopped = False
