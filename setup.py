@@ -11,13 +11,13 @@ ffmpy==0.3.0
 setup(
     name="mantra-mixer",
     packages=["mantra_mixer"],
-    version="0.2",
+    version="0.3",
     license="MIT",
     description="Audio mixing library simplified.",
     author="Philippe Mathew",
     author_email="philmattdev@gmail.com",
     url="https://github.com/bossauh/mantra-mixer",
-    download_url="https://github.com/bossauh/mantra-mixer/archive/refs/tags/v_02.tar.gz",
+    download_url="https://github.com/bossauh/mantra-mixer/archive/refs/tags/v_03.tar.gz",
     keywords=["audio", "mixing", "mixer"],
     install_requires=install_requires,
     classifiers=[
