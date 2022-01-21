@@ -2,6 +2,7 @@
 *.m4a
 ./conversions
 test.py
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
