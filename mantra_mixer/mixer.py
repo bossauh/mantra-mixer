@@ -208,6 +208,7 @@ class Mixer:
         self.tracks = tracks
         self.conversion_path = conversion_path
         self.loop = asyncio.get_event_loop()
+        self.playing_files = {}
 
         if isinstance(self.tracks, int):
             self.tracks = self.generate_tracks(self.tracks, kwargs.get("tracks_params"))
@@ -267,7 +268,14 @@ class Mixer:
         """Get a list of unoccupied tracks. Could be an empty list of no unoccupied tracks were found."""
         return [x for x in self.tracks if not x.occupied]
     
-    async def stop_all(self):
+    def stop_file(self, track: str) -> None:
+        playing_data = self.playing_files.get(track)
+
+        if playing_data:
+            if playing_data["playing"]:
+                self.playing_files[track]["stop"] = True
+    
+    async def stop_all(self) -> None:
         """Stops all tracks"""
         for track in self.tracks:
             await track.stop()
@@ -278,7 +286,7 @@ class Mixer:
 
         Notes
         -----
-        - If the provided file does not match the default sample rate, the track's samplerate will be modifed therefore causing the track to restart. This means if you already got something playing in a provided track, it will be stopped if the samplerate does not match the samplerate of the current track.
+        - If you try to play over a track that is already playing, that track will be stopped and played again with the new provided file.
         - If the provided file's format is not supported. It will be converted into a .wav file and that .wav file is stored in self.conversion_path. If the conversion path is None then we will not try to convert it and just continue to raise an `UnsupportedFormat` error.
 
         Parameters
@@ -333,6 +341,16 @@ class Mixer:
                 return await self.play_file(out, **kwargs)
             except ffmpy.FFRuntimeError as e:
                 raise UnsupportedFormat(e)
+        
+        # Check if the current track is being fed audio data and stop if it is
+        self.stop_file(track.name)
+        while True:
+            playing_data = self.playing_files.get(track.name)
+            if not playing_data:
+                break
+
+            if not playing_data["playing"]:
+                break
 
         await track.update_samplerate(rate)
         blocksize = track.shape[0]
@@ -346,8 +364,22 @@ class Mixer:
         )
 
         def t():
+            self.playing_files[track.name] = {
+                "playing": True,
+                "stop": False
+            }
+
             for nd in nds:
+                sig = self.playing_files.get(track.name)
+                if sig:
+                    if sig["stop"]:
+                        break
                 track.queue.put(nd)
+            
+            self.playing_files[track.name] = {
+                "playing": False,
+                "stop": False
+            }
 
         if not kwargs.get("blocking", False):
             threading.Thread(target=t, daemon=True).start()
