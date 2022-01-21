@@ -1,5 +1,4 @@
 numpy==1.21.5
-sounddevice
 librosa==0.8.1
 soundfile==0.10.3.post1
 sounddevice==0.4.4
