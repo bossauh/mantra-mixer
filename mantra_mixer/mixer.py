@@ -17,9 +17,13 @@ from .exceptions import *
 RATE = 48000
 
 
-class Track:
+class InputTrack:
+    pass
+
+
+class OutputTrack:
     """
-    Initialize a Track.
+    Initialize a OutputTrack.
     A track is what's responsible for opening a constant sd.OutputStream in the background.
     We can then play audio by putting ndarray data into this track's Queue.
 
@@ -185,26 +189,26 @@ class Track:
 
 class Mixer:
     """
-    Create a Mixer. This mixer will be responsible for handling all the tracks and playing audio.
+    Create a Mixer. This mixer will be responsible for handling all the OutputTracks and playing audio.
 
     Parameters
     ----------
-    `tracks` : Union[List[Track], int]
-        Your list of tracks or a `int` number of tracks to generate on init. If a integer is provided, that amount of tracks will be generated and the name of each track is going to be `str(id)`
+    `tracks` : Union[List[Union[OutputTrack, InputTrack]], int]
+        Your list of OutputTrack (or InputTrack) or a `int` number of OutputTrack to pre-generate on init. If a integer is provided, that amount of tracks will be pre-generated and the name of each track is going to be `str(id)`. This class can only pre-generate a list of OutputTrack, if you want a InputTrack, you'd have to pass it yourself in this `tracks` paramater or append it to `self.tracks` after pre-generating a list of OutputTrack
     `conversion_path` : str
         Sometimes loading a file will fail due to it being an invalid format. To get around this, we convert it onto a .wav file, this is where those converted files are stored. Defaults to None which is to just allow loading of unsupported formats to fail.
     `tracks_params` : dict
-        You'll use this if you provided an int to the tracks parameter. This is a dictionary that takes in parameters each Track object needs.
+        You'll use this if you provided an int to the tracks parameter. This is a dictionary that takes in parameters each OutputTrack object needs.
 
         Ex:
         if you want all generatred tracks to have parameters like these:
-            Track(vol=0.5, callback=some_func)
+            OutputTrack(vol=0.5, callback=some_func)
 
         You would set this parameter to:
             tracks_params={"vol": 0.5, "callback": some_func}
     """
 
-    def __init__(self, tracks: Union[List[Track], int], conversion_path: str = None, **kwargs) -> None:
+    def __init__(self, tracks: Union[List[Union[OutputTrack, InputTrack]], int], conversion_path: str = None, **kwargs) -> None:
         self.tracks = tracks
         self.conversion_path = conversion_path
         self.loop = asyncio.get_event_loop()
@@ -218,9 +222,9 @@ class Mixer:
         if params is None:
             params = {}
 
-        return [Track(str(i), **params) for i in range(count)]
+        return [OutputTrack(str(i), **params) for i in range(count)]
 
-    def get_track(self, name: str = None, id_: int = None, require_unoccupied: bool = False) -> Union[None, Track]:
+    def get_track(self, name: str = None, id_: int = None, require_unoccupied: bool = False, types_: List[str] = None) -> Union[None, OutputTrack]:
         """
         Retrieve a specific track either by its name or id.
 
@@ -231,11 +235,13 @@ class Mixer:
         `id_` : int
             The id of the track (it's basically the index of the track in self.tracks)
         `require_unoccupied` : bool 
-            Whether the track must be occupied. If this is True and we found a track but it's occupied, None will be return instead, otherwise the Track is returned. Defaults to False.
+            Whether the track must be occupied. If this is True and we found a track but it's occupied, None will be return instead, otherwise the OutputTrack is returned. Defaults to False.
+        `types_` : List[str]
+            Types of tracks to get. Defaults to ["output"]. List of available types are as follows. ["output", "input"]
 
         Returns
         ------
-        Either the Track if it was found or None.
+        Either the OutputTrack or InputTrack if it was found or None.
 
         Raises
         ------
@@ -244,9 +250,19 @@ class Mixer:
         """
 
         track = None
+        types_ = types_ if types_ else ["output"]
+        instances = []
+
+        if "output" in types_:
+            instances.append(OutputTrack)
+        
+        if "input" in types_:
+            instances.append(InputTrack)
+        
+        instances = tuple(instances)
 
         if name:
-            track = [x for x in self.tracks if x.name == name]
+            track = [x for x in self.tracks if x.name == name and isinstance(x, instances)]
             if not track:
                 return
 
@@ -254,6 +270,8 @@ class Mixer:
         elif id_:
             try:
                 track = self.tracks[id_]
+                if not isinstance(track, instances):
+                    track = None
             except IndexError:
                 return
         else:
@@ -265,7 +283,7 @@ class Mixer:
                 return
         return track
 
-    def get_unoccupied_tracks(self) -> List[Track]:
+    def get_unoccupied_tracks(self) -> List[OutputTrack]:
         """Get a list of unoccupied tracks. Could be an empty list of no unoccupied tracks were found."""
         return [x for x in self.tracks if not x.occupied]
 
@@ -281,7 +299,7 @@ class Mixer:
         for track in self.tracks:
             await track.stop()
 
-    async def play_file(self, fp: str, **kwargs) -> Track:
+    async def play_file(self, fp: str, **kwargs) -> OutputTrack:
         """
         Play the provided file. The file will be split into chunks and is then put in the track's audio queue.
 
@@ -294,7 +312,7 @@ class Mixer:
         ----------
         `fp`: str
             Path to the file.
-        `track` : Track
+        `track` : OutputTrack
             The track to use. If not provided, a unoccupied track will be used.
         `blocking` : bool
             Whether to use a thread when putting the items in the queue or not. Defaults to False.
@@ -303,14 +321,14 @@ class Mixer:
 
         Raises
         ------
-        `NoUnoccupiedTrack` :
+        `NoUnoccupiedOutputTrack` :
             Raised when there's no unoccupied track. Will not be raised if `track` is provided.
         `UnsupportedFormat` :
             Raised when the provided file format is not supported or when is it converted onto a .wav but it still fails.
 
         Returns
         -------
-        `Track` :
+        `OutputTrack` :
             The track the file is being played at.
         """
 
