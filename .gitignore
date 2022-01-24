@@ -3,6 +3,7 @@
 ./conversions
 test.py
 .vscode/
+test_input.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
