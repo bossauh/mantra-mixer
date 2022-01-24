@@ -1,1 +1,1 @@
-from .mixer import Mixer, Track
+from .mixer import Mixer, OutputTrack, InputTrack
