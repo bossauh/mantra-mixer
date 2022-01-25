@@ -18,7 +18,44 @@ RATE = 44100
 
 
 class InputTrack:
-    pass
+    def __init__(self, name: str, **kwargs) -> None:
+        self.name = name
+
+        self.stopped = True
+        self.samplerate = RATE
+        self._stop_signal = False
+
+        self.queue = Queue(maxsize=10)
+        
+        # Start and wait
+        self.start()
+        while self.stopped:
+            time.sleep(0.01)
+    
+    async def stop(self) -> None:
+        """Stop the InputTrack"""
+        self._stop_signal = True
+        while not self.stopped:
+            await asyncio.sleep(0.01)
+        
+    def __callback(self, indata, frames, time, status) -> None:
+        self.stopped = False
+        self.queue.put(indata)
+    
+    def start(self) -> None:
+        """Start the InputTrack"""
+        threading.Thread(target=self.__start, daemon=True).start()
+    
+    def __start(self) -> None:
+        with sd.InputStream(samplerate=self.samplerate, channels=2, callback=self.__callback):
+            while not self._stop_signal:
+                try:
+                    time.sleep(0.001)
+                except KeyboardInterrupt:
+                    self.stop()
+        
+        self.stopped = True
+        self._stop_signal = False
 
 
 class OutputTrack:
