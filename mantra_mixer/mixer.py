@@ -78,6 +78,10 @@ class OutputTrack:
         A user supplied function that takes in one argument, the provided value in the parameter is the ndarray's being played. If the track is paused, or there's nothing to play, the callback function is not being called (because there's no ndarray to supply it with). This callback then should return the same or modified ndarray (the returned ndarray is what ends up being played)
     `queue_size` : int
         The maximum number of frames to put in the queue. Defaults to 20. You normally don't have to touch this.
+    `samplerate` : int
+        The initial samplerate of this OutputTrack. Defaults to RATE. Note that samplerate will be changed once update_samplerate is called. Mentioned method is also always called when attempting to play files with a mismatched samplerate.
+    `blocksize` : int
+        Blocksize. This parameter is ignored if a InputTrack (see below) is provided. Defaults to None which is a calculated blocksize from the samplerate."
     `input_` : InputStream
         If a InputStream is provided here, the output of that InputStream will be automatically fed in this OutputStream.
 
@@ -92,8 +96,8 @@ class OutputTrack:
 
         self.occupied = False
         self.shape = None
-        self.samplerate = RATE
-        self.blocksize = None
+        self.samplerate = kwargs.get("samplerate", RATE)
+        self.blocksize = kwargs.get("blocksize")
         self.callback = kwargs.get("callback")
         self.input = kwargs.get("input_")
         if self.input is not None:
