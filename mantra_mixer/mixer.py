@@ -76,6 +76,8 @@ class OutputTrack:
         A user supplied function that takes in one argument, the provided value in the parameter is the ndarray's being played. If the track is paused, or there's nothing to play, the callback function is not being called (because there's no ndarray to supply it with). This callback then should return the same or modified ndarray (the returned ndarray is what ends up being played)
     `queue_size` : int
         The maximum number of frames to put in the queue. Defaults to 20. You normally don't have to touch this.
+    `input_` : InputStream
+        If a InputStream is provided here, the output of that InputStream will be automatically fed in this OutputStream.
 
     Audio Parameters
     ----------------
@@ -90,6 +92,7 @@ class OutputTrack:
         self.shape = None
         self.samplerate = RATE
         self.callback = kwargs.get("callback")
+        self.input = kwargs.get("input_")
 
         self.queue = Queue(kwargs.get("queue_size", 20))
         self.start()
@@ -105,6 +108,16 @@ class OutputTrack:
         # Wait for the track to start
         while self.shape is None:
             time.sleep(0.01)
+        
+    async def cast_input(self, input_: InputTrack) -> None:
+        """
+        Directs the output of the provided InputTrack into this OutputTrack.
+        It is recommended to call this function rather than setting self.input manually so that samplerate differences are handled.
+        """
+
+        rate = input_.samplerate
+        await self.update_samplerate(rate)
+        self.input = input_
 
     async def pause(self, smooth: bool = True) -> None:
         """Pause the track"""
@@ -175,6 +188,7 @@ class OutputTrack:
     async def stop(self) -> None:
         """Stop this track's OutputStream"""
         self._stop_signal = True
+        self.input = None
         while not self.stopped:
             await asyncio.sleep(0.01)
 
@@ -197,7 +211,10 @@ class OutputTrack:
 
         if not self.paused:
             try:
-                data = self.queue.get(block=False)
+                if not self.input:
+                    data = self.queue.get(block=False)
+                else:
+                    data = self.input.queue.get(block=False)
                 self.occupied = True
             except Empty:
                 self.occupied = False
