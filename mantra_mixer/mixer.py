@@ -25,7 +25,7 @@ class InputTrack:
         self.samplerate = RATE
         self._stop_signal = False
 
-        self.queue = Queue(maxsize=10)
+        self.data = None
         
         # Start and wait
         self.start()
@@ -40,7 +40,7 @@ class InputTrack:
         
     def __callback(self, indata, frames, time, status) -> None:
         self.stopped = False
-        self.queue.put(indata)
+        self.data = indata
     
     def start(self) -> None:
         """Start the InputTrack"""
@@ -214,7 +214,7 @@ class OutputTrack:
                 if not self.input:
                     data = self.queue.get(block=False)
                 else:
-                    data = self.input.queue.get(block=False)
+                    data = self.input.data
                 self.occupied = True
             except Empty:
                 self.occupied = False
