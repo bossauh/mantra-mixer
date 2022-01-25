@@ -93,10 +93,12 @@ class OutputTrack:
         self.occupied = False
         self.shape = None
         self.samplerate = RATE
+        self.blocksize = None
         self.callback = kwargs.get("callback")
         self.input = kwargs.get("input_")
         if self.input is not None:
             self.samplerate = self.input.samplerate
+            self.blocksize = self.input.blocksize
 
         self.queue = Queue(kwargs.get("queue_size", 20))
         self.start()
@@ -120,6 +122,7 @@ class OutputTrack:
         """
 
         rate = input_.samplerate
+        self.blocksize = input_.blocksize
         await self.update_samplerate(rate)
         self.input = input_
 
@@ -234,7 +237,7 @@ class OutputTrack:
             outdata[:] = 0
 
     def __start(self) -> None:
-        with sd.OutputStream(samplerate=self.samplerate, channels=2, callback=self.__callback):
+        with sd.OutputStream(samplerate=self.samplerate, blocksize=self.blocksize, channels=2, callback=self.__callback):
             while not self._stop_signal:
                 try:
                     time.sleep(0.001)
