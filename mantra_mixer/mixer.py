@@ -43,7 +43,6 @@ class InputTrack:
     def __callback(self, indata, frames, time, status) -> None:
         self.stopped = False
         self.data = indata
-        print(indata.shape)
     
     def start(self) -> None:
         """Start the InputTrack"""
