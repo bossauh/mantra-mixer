@@ -22,7 +22,7 @@ class InputTrack:
         self.name = name
 
         self.stopped = True
-        self.samplerate = RATE
+        self.samplerate = kwargs.get("samplerate", RATE)
         self._stop_signal = False
 
         self.data = None
@@ -93,6 +93,8 @@ class OutputTrack:
         self.samplerate = RATE
         self.callback = kwargs.get("callback")
         self.input = kwargs.get("input_")
+        if self.input is not None:
+            self.samplerate = self.input.samplerate
 
         self.queue = Queue(kwargs.get("queue_size", 20))
         self.start()
