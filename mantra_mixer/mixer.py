@@ -23,6 +23,8 @@ class InputTrack:
 
         self.stopped = True
         self.samplerate = kwargs.get("samplerate", RATE)
+        self.blocksize = kwargs.get("blocksize")
+        self.device = kwargs.get("device")
         self._stop_signal = False
 
         self.data = None
@@ -41,13 +43,14 @@ class InputTrack:
     def __callback(self, indata, frames, time, status) -> None:
         self.stopped = False
         self.data = indata
+        print(indata.shape)
     
     def start(self) -> None:
         """Start the InputTrack"""
         threading.Thread(target=self.__start, daemon=True).start()
     
     def __start(self) -> None:
-        with sd.InputStream(samplerate=self.samplerate, channels=2, callback=self.__callback):
+        with sd.InputStream(samplerate=self.samplerate, blocksize=self.blocksize, device=self.device, channels=2, callback=self.__callback):
             while not self._stop_signal:
                 try:
                     time.sleep(0.001)
