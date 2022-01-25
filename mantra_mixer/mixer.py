@@ -14,7 +14,7 @@ import soundfile as sf
 
 from .exceptions import *
 
-RATE = 48000
+RATE = 44100
 
 
 class InputTrack:
