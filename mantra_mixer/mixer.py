@@ -18,6 +18,31 @@ RATE = 44100
 
 
 class InputTrack:
+
+    """
+    Initializes a InputTrack. 
+    A InputTrack is what's responsible for taking audio data from a input device (e.g., microphone) 
+    then storing it in a variable for later use.
+
+    You can use this InputTrack and "cast" it onto a OutputTrack so that whatever the input is hearing, you'll hear.
+
+    Parameters
+    ----------
+    `name` : str
+        Name of the InputTrack.
+    `samplerate` : int
+        Sample rate to use. Defaults to RATE.
+    `blocksize` : int
+        Defaults to None, which is calculate by sounddevice from the samplerate.
+    `channels` : int
+        Number of channels to use. Defaults to 2.
+    `device` : int
+        Device index to use. Defaults to the default device configured by the sound settings on the operating system.
+        run `python -m sounddevice` to see all devices and their indexes.
+    `dtype` : str
+        Data type to be passed as `dtype` into sd.InputStream. Defaults to "float32"
+    """
+
     def __init__(self, name: str, **kwargs) -> None:
         self.name = name
 
@@ -26,6 +51,7 @@ class InputTrack:
         self.blocksize = kwargs.get("blocksize")
         self.channels = kwargs.get("channels", 2)
         self.device = kwargs.get("device")
+        self.dtype = kwargs.get("dtype", "float32")
         self._stop_signal = False
 
         self.data = None
@@ -50,7 +76,7 @@ class InputTrack:
         threading.Thread(target=self.__start, daemon=True).start()
     
     def __start(self) -> None:
-        with sd.InputStream(samplerate=self.samplerate, blocksize=self.blocksize, device=self.device, channels=self.channels, callback=self.__callback):
+        with sd.InputStream(samplerate=self.samplerate, blocksize=self.blocksize, device=self.device, channels=self.channels, callback=self.__callback, dtype=self.dtype):
             while not self._stop_signal:
                 try:
                     time.sleep(0.001)
@@ -83,6 +109,8 @@ class OutputTrack:
         The initial samplerate of this OutputTrack. Defaults to RATE. Note that samplerate will be changed once update_samplerate is called. Mentioned method is also always called when attempting to play files with a mismatched samplerate.
     `blocksize` : int
         Blocksize. This parameter is ignored if a InputTrack (see below) is provided. Defaults to None which is a calculated blocksize from the samplerate."
+    `dtype` : str
+        The dtype parameter to be passed onto sd.OutputStream. Defaults to float32.
     `input_` : InputStream
         If a InputStream is provided here, the output of that InputStream will be automatically fed in this OutputStream.
 
@@ -99,6 +127,7 @@ class OutputTrack:
         self.shape = None
         self.samplerate = kwargs.get("samplerate", RATE)
         self.blocksize = kwargs.get("blocksize")
+        self.dtype = kwargs.get("dtype", "float32")
         self.callback = kwargs.get("callback")
         self.input = kwargs.get("input_")
         if self.input is not None:
@@ -128,6 +157,7 @@ class OutputTrack:
 
         rate = input_.samplerate
         self.blocksize = input_.blocksize
+        self.dtype = input_.dtype
         await self.update_samplerate(rate)
         self.input = input_
 
@@ -242,7 +272,7 @@ class OutputTrack:
             outdata[:] = 0
 
     def __start(self) -> None:
-        with sd.OutputStream(samplerate=self.samplerate, blocksize=self.blocksize, channels=2, callback=self.__callback):
+        with sd.OutputStream(samplerate=self.samplerate, blocksize=self.blocksize, channels=2, callback=self.__callback, dtype=self.dtype):
             while not self._stop_signal:
                 try:
                     time.sleep(0.001)
